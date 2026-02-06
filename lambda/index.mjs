@@ -31,7 +31,7 @@ export const handler = async (event) => {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
 
-  const speak = (text, end = false, repromptText = "Puedes decir cuento o música.") => ({
+  const speak = (text, end = false, repromptText = "¿Sigues ahí? Elige: cuento o música.") => ({
     version: "1.0",
     response: {
       outputSpeech: { type: "SSML", ssml: `<speak>${text}</speak>` },
@@ -82,7 +82,7 @@ export const handler = async (event) => {
     }
   });
 
-  const stopAudio = (text = "Listo, detuve la reproducción.") => ({
+  const stopAudio = (text = "Hecho.") => ({
     version: "1.0",
     response: {
       outputSpeech: { type: "SSML", ssml: `<speak>${text}</speak>` },
@@ -163,7 +163,7 @@ export const handler = async (event) => {
   }
 
   if (request.type === "LaunchRequest") {
-    return speak("Hola. Bienvenido a Cuentos Luny. ¿Quieres escuchar un cuento o música?", false);
+    return speak("¡Hola! Soy Luny. ¿Qué te apetece hoy: cuento o música?", false);
   }
 
   if (request.type === "IntentRequest") {
@@ -182,7 +182,7 @@ export const handler = async (event) => {
           remainingMs: TARGET_MS,
           trackId: first.id
         });
-        return playAudio(first.url, token, "Muy bien. Disfruta la música.");
+        return playAudio(first.url, token, "Perfecto. Empieza la música.");
       }
       if (tipo.includes("cuento") || tipo.includes("relato") || tipo.includes("historia")) {
         const story = randomItem(STORIES);
@@ -191,11 +191,11 @@ export const handler = async (event) => {
           storyId: story.id,
           step: "cuento"
         });
-        return playAudio(story.url, token, "Excelente. Comienza el cuento.");
+        return playAudio(story.url, token, "Me encanta. Que empiece el cuento.");
       }
-      return speak("No entendí. Puedes decir cuento o música.", false);
+      return speak("Lo siento, no te entendí. ¿Prefieres cuento o música?", false);
     }
   }
 
-  return speak("No entendí. Puedes decir cuento o música.", false);
+  return speak("Lo siento, no te entendí. ¿Prefieres cuento o música?", false);
 };
