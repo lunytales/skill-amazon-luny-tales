@@ -1,0 +1,76 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "cuentos luna",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.PauseIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.ResumeIntent",
+          "samples": []
+        },
+        {
+          "name": "ElegirAudioIntent",
+          "slots": [
+            {
+              "name": "tipo",
+              "type": "TIPO_AUDIO"
+            }
+          ],
+          "samples": [
+            "{tipo}",
+            "pon {tipo}",
+            "quiero {tipo}",
+            "reproduce {tipo}",
+            "ponme {tipo}",
+            "quiero escuchar {tipo}",
+            "pon un {tipo}",
+            "pon una {tipo}"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "TIPO_AUDIO",
+          "values": [
+            {
+              "name": {
+                "value": "cuento",
+                "synonyms": [
+                  "relato",
+                  "historia",
+                  "cuento para dormir"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "música",
+                "synonyms": [
+                  "musica",
+                  "canciones",
+                  "música relajante",
+                  "música para dormir"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
