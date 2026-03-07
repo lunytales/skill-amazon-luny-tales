@@ -41,6 +41,10 @@
             "pon un {tipo}",
             "pon una {tipo}"
           ]
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
         }
       ],
       "types": [
