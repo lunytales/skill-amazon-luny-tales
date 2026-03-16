@@ -1,0 +1,55 @@
+{
+  "packageVersion": "1.0",
+  "packageType": "APL_PACKAGE",
+  "publishingInformation": {
+    "schemaVersion": "1.0",
+    "locales": {
+      "es-MX": [
+        {
+          "targetViewport": "WIDGET_M",
+          "metadata": {
+            "name": "Cuento",
+            "description": "Inicia cuento aleatorio y cancion asociada.",
+            "keywords": [
+              "cuento",
+              "dormir",
+              "relato"
+            ],
+            "iconUri": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-story-m.jpg",
+            "previews": [
+              "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-story-m.jpg"
+            ]
+          }
+        },
+        {
+          "targetViewport": "WIDGET_XL",
+          "metadata": {
+            "name": "Cuento",
+            "description": "Inicia cuento aleatorio y cancion asociada.",
+            "keywords": [
+              "cuento",
+              "dormir",
+              "relato"
+            ],
+            "iconUri": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-story-l.jpg",
+            "previews": [
+              "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-story-l.jpg"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "manifest": {
+    "id": "StoryWidget",
+    "version": "1.0.1",
+    "installStateChanges": "AUTOMATIC",
+    "updateStateChanges": "AUTOMATIC",
+    "presentationDefinitions": [
+      {
+        "url": "presentations/default.tpl"
+      }
+    ],
+    "appliesTo": "${viewport.mode == 'HUB'}"
+  }
+}

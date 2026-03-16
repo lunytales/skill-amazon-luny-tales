@@ -1,0 +1,9 @@
+{
+  "widgetData": {
+    "title": "Cuento",
+    "subtitle": "Toca para iniciar",
+    "duration": "Cuento + cancion",
+    "imageM": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-story-m.jpg?v=20260316",
+    "imageL": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-story-l.jpg?v=20260316"
+  }
+}

@@ -35,15 +35,15 @@ export const handler = async (event) => {
     version: "1.0",
     response: {
       outputSpeech: { type: "SSML", ssml: `<speak>${text}</speak>` },
-      ...(end ? {} : { reprompt: { outputSpeech: { type: "SSML", ssml: `<speak>${repromptText}</speak>` } } }),
+      ...(end
+        ? {}
+        : { reprompt: { outputSpeech: { type: "SSML", ssml: `<speak>${repromptText}</speak>` } } }),
       shouldEndSession: end
     }
   });
 
-  const playAudio = (url, token, text) => ({
-    version: "1.0",
-    response: {
-      outputSpeech: { type: "SSML", ssml: `<speak>${text}</speak>` },
+  const playAudio = (url, token, text = null) => {
+    const response = {
       directives: [
         {
           type: "AudioPlayer.Play",
@@ -58,8 +58,17 @@ export const handler = async (event) => {
         }
       ],
       shouldEndSession: true
+    };
+
+    if (text) {
+      response.outputSpeech = { type: "SSML", ssml: `<speak>${text}</speak>` };
     }
-  });
+
+    return {
+      version: "1.0",
+      response
+    };
+  };
 
   const enqueueAudio = (url, token, expectedPreviousToken) => ({
     version: "1.0",
@@ -116,6 +125,55 @@ export const handler = async (event) => {
     return item;
   };
 
+  const startMusic = ({ silent = false } = {}) => {
+    const first = randomItem(MUSIC_TRACKS);
+    const token = encodeToken({
+      mode: "music",
+      remainingMs: TARGET_MS,
+      trackId: first.id
+    });
+    return playAudio(first.url, token, silent ? null : "Perfecto. Empieza la música.");
+  };
+
+  const startStory = ({ silent = false } = {}) => {
+    const story = randomItem(STORIES);
+    const token = encodeToken({
+      mode: "story",
+      storyId: story.id,
+      step: "cuento"
+    });
+    return playAudio(story.url, token, silent ? null : "Me encanta. Que empiece el cuento.");
+  };
+
+  const handleIntentByName = (intentName, opts = {}) => {
+    const { fromWidget = false, slotTipo = "" } = opts;
+
+    if (["AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.PauseIntent"].includes(intentName)) {
+      return stopAudio();
+    }
+
+    if (intentName === "PlayMusicIntent") {
+      return startMusic({ silent: fromWidget });
+    }
+
+    if (intentName === "PlayStoryIntent") {
+      return startStory({ silent: fromWidget });
+    }
+
+    if (intentName === "ElegirAudioIntent") {
+      const tipo = normalize(slotTipo);
+      if (tipo.includes("musi")) {
+        return startMusic({ silent: false });
+      }
+      if (tipo.includes("cuento") || tipo.includes("relato") || tipo.includes("historia")) {
+        return startStory({ silent: false });
+      }
+      return speak("Lo siento, no te entendí. ¿Prefieres cuento o música?", false);
+    }
+
+    return fromWidget ? emptyResponse() : speak("Lo siento, no te entendí. ¿Prefieres cuento o música?", false);
+  };
+
   if (request.type === "AudioPlayer.PlaybackNearlyFinished") {
     const tokenData = decodeToken(request.token);
     if (!tokenData) return emptyResponse();
@@ -162,39 +220,22 @@ export const handler = async (event) => {
     return emptyResponse();
   }
 
+  if (request.type === "Alexa.Presentation.APL.UserEvent") {
+    const action = request.arguments?.[0];
+    if (action?.action === "launchIntent" && typeof action.intentName === "string") {
+      return handleIntentByName(action.intentName, { fromWidget: true });
+    }
+    return emptyResponse();
+  }
+
   if (request.type === "LaunchRequest") {
     return speak("¡Hola! Soy Luny. ¿Qué te apetece hoy: cuento o música?", false);
   }
 
   if (request.type === "IntentRequest") {
     const intent = request.intent.name;
-
-    if (["AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.PauseIntent"].includes(intent)) {
-      return stopAudio();
-    }
-
-    if (intent === "ElegirAudioIntent") {
-      const tipo = normalize(request.intent.slots?.tipo?.value);
-      if (tipo.includes("musi")) {
-        const first = randomItem(MUSIC_TRACKS);
-        const token = encodeToken({
-          mode: "music",
-          remainingMs: TARGET_MS,
-          trackId: first.id
-        });
-        return playAudio(first.url, token, "Perfecto. Empieza la música.");
-      }
-      if (tipo.includes("cuento") || tipo.includes("relato") || tipo.includes("historia")) {
-        const story = randomItem(STORIES);
-        const token = encodeToken({
-          mode: "story",
-          storyId: story.id,
-          step: "cuento"
-        });
-        return playAudio(story.url, token, "Me encanta. Que empiece el cuento.");
-      }
-      return speak("Lo siento, no te entendí. ¿Prefieres cuento o música?", false);
-    }
+    const slotTipo = request.intent.slots?.tipo?.value || "";
+    return handleIntentByName(intent, { fromWidget: false, slotTipo });
   }
 
   return speak("Lo siento, no te entendí. ¿Prefieres cuento o música?", false);

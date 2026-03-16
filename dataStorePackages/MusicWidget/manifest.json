@@ -1,0 +1,55 @@
+{
+  "packageVersion": "1.0",
+  "packageType": "APL_PACKAGE",
+  "publishingInformation": {
+    "schemaVersion": "1.0",
+    "locales": {
+      "es-MX": [
+        {
+          "targetViewport": "WIDGET_M",
+          "metadata": {
+            "name": "Musica",
+            "description": "Inicia musica relajante por 20 minutos.",
+            "keywords": [
+              "musica",
+              "dormir",
+              "relajar"
+            ],
+            "iconUri": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-m.jpg",
+            "previews": [
+              "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-m.jpg"
+            ]
+          }
+        },
+        {
+          "targetViewport": "WIDGET_XL",
+          "metadata": {
+            "name": "Musica",
+            "description": "Inicia musica relajante por 20 minutos.",
+            "keywords": [
+              "musica",
+              "dormir",
+              "relajar"
+            ],
+            "iconUri": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-l.jpg",
+            "previews": [
+              "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-l.jpg"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "manifest": {
+    "id": "MusicWidget",
+    "version": "1.0.1",
+    "installStateChanges": "AUTOMATIC",
+    "updateStateChanges": "AUTOMATIC",
+    "presentationDefinitions": [
+      {
+        "url": "presentations/default.tpl"
+      }
+    ],
+    "appliesTo": "${viewport.mode == 'HUB'}"
+  }
+}

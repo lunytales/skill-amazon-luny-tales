@@ -8,7 +8,7 @@ Este repositorio refleja el código actual de Lambda y el modelo de interacción
 
 ## Notas
 - El nombre de marca puede quedar como **Luma Tales**, mientras el invocation name es **cuentos luna** para mejor reconocimiento por voz.
-- Runtime de Lambda: Node.js (AWS Lambda)
+- Runtime de Lambda: **Node.js 22.x** (AWS Lambda)
 
 ## Checklist de despliegue (manual)
 1. Actualiza `lambda/index.mjs` en la Lambda `LunyTalesSK`.

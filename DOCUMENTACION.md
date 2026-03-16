@@ -1,6 +1,6 @@
 # Documentación Técnica - Skill LunyTales (Nivel 2)
 
-Actualizado: 2026-02-06
+Actualizado: 2026-03-16
 
 ## 1) Resumen
 Esta skill reproduce cuentos y música relajante con una experiencia simple:
@@ -76,6 +76,7 @@ Repositorio local:
 
 AWS:
 - Lambda: `LunyTalesSK` (us-east-1)
+- Runtime Lambda: `Node.js 22.x` (actualizado desde `Node.js 20.x`)
 - Skill: Alexa Developer Console (es-MX)
 - Audio: S3 (us-east-2)
 
@@ -145,12 +146,101 @@ Formato seguro (alta calidad y compatible):
 
 ## 13) Pasos de despliegue (manual)
 1. Actualizar `lambda/index.mjs` en AWS Lambda (`LunyTalesSK`) y presionar **Deploy**.
-2. Si cambiaste el modelo:
+2. Verificar que la Lambda esté en runtime **Node.js 22.x**.
+3. Si cambiaste el modelo:
    - Developer Console -> Build -> JSON Editor
    - **Save Model** y luego **Build Model**.
-3. Probar por voz:
+4. Probar por voz:
    - "Alexa, abre cuentos luna"
    - "cuento"
    - "música"
    - "Alexa, para"
 
+## 14) Widgets implementados (marzo 2026)
+Se implementaron **2 widgets** (no 4):
+- `MusicWidget`
+- `StoryWidget`
+
+Comportamiento:
+- Tap en `MusicWidget` -> envía `Alexa.Presentation.APL.UserEvent` con `PlayMusicIntent`.
+- Tap en `StoryWidget` -> envía `Alexa.Presentation.APL.UserEvent` con `PlayStoryIntent`.
+- En ruta widget no hay bienvenida, reprompt ni outputSpeech.
+- La reproducción inicia directo con `AudioPlayer.Play`.
+- Se mantiene toda la lógica actual de reproducción:
+  - música ~20 min encadenada
+  - cuento aleatorio -> canción asociada -> cierre silencioso
+
+## 15) Archivos de widgets en el repositorio
+Raíz: `skill-lunytales/`
+
+Music:
+- `dataStorePackages/MusicWidget/manifest.json`
+- `dataStorePackages/MusicWidget/presentations/default.tpl`
+- `dataStorePackages/MusicWidget/documents/document.json`
+- `dataStorePackages/MusicWidget/datasources/default.json`
+
+Story:
+- `dataStorePackages/StoryWidget/manifest.json`
+- `dataStorePackages/StoryWidget/presentations/default.tpl`
+- `dataStorePackages/StoryWidget/documents/document.json`
+- `dataStorePackages/StoryWidget/datasources/default.json`
+
+## 16) Configuración clave de widgets
+En los manifests de widget:
+- Viewports válidos usados: `WIDGET_M` y `WIDGET_XL`.
+- Nota importante: en esta consola, `WIDGET_L` marca error de validación.
+
+URLs de imágenes públicas en S3:
+- Music M: `https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-m.jpg`
+- Music XL: `https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-l.jpg`
+- Story M: `https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-story-m.jpg`
+- Story XL: `https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-story-l.jpg`
+
+Si se reemplazan imágenes en S3 con el mismo nombre:
+- Puede haber cache en preview.
+- Solución práctica: agregar query param de versión (ej: `?v=20260316`) en `datasources/default.json`.
+
+## 17) Interfaces necesarias en la Skill
+En `Build -> Interfaces` deben estar activas:
+- `ALEXA_DATA_STORE`
+- `ALEXA_DATASTORE_PACKAGEMANAGER`
+- `ALEXA_EXTENSION`
+
+En `skill.json` quedaron declaradas junto con `AUDIO_PLAYER`.
+
+## 18) Router técnico en Lambda (widgets)
+La Lambda procesa:
+- `Alexa.Presentation.APL.UserEvent`
+
+Formato esperado en `arguments`:
+- `{"action":"launchIntent","intentName":"PlayMusicIntent"}`
+- `{"action":"launchIntent","intentName":"PlayStoryIntent"}`
+
+Resultado esperado:
+- respuesta con `AudioPlayer.Play`
+- sin `outputSpeech`
+- `shouldEndSession: true`
+
+## 19) Pruebas QA realizadas sin Echo Show
+Se validó en AWS Lambda -> `Probar` con eventos manuales:
+- `widget_music_tap` (PlayMusicIntent)
+- `widget_story_tap` (PlayStoryIntent)
+
+Resultado en ambos:
+- ejecución sin errores
+- `AudioPlayer.Play` correcto
+- sin voz de bienvenida
+
+## 20) ¿Cómo lo ven los usuarios? (publicación)
+Sí: para que usuarios finales lo vean fuera de tu cuenta de desarrollo, debes publicar actualización de la skill.
+
+Flujo recomendado:
+1. `Build` sin errores.
+2. `Distribution` completar metadata si cambió algo.
+3. Enviar update a certificación.
+4. Esperar aprobación.
+5. Publicar versión live.
+
+Notas:
+- En modo Development, solo lo ve/prueba tu cuenta de desarrollador y testers autorizados.
+- Si agregas/ajustas widgets, trátalo como cambio de versión que requiere revisión antes de quedar live para todos.

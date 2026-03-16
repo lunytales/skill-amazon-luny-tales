@@ -1,0 +1,80 @@
+{
+  "manifest": {
+    "manifestVersion": "1.0",
+    "publishingInformation": {
+      "locales": {
+        "es-MX": {
+          "name": "Cuentos Luna",
+          "summary": "Cuentos y música relajante para dormir.",
+          "description": "Reproduce cuentos y música relajante con reproducción automática y cierre silencioso.",
+          "examplePhrases": [
+            "Alexa, abre cuentos luna",
+            "cuento",
+            "música"
+          ],
+          "keywords": [
+            "cuentos",
+            "música",
+            "dormir"
+          ]
+        }
+      },
+      "isAvailableWorldwide": true,
+      "testingInstructions": "Prueba por voz: Alexa, abre cuentos luna. Luego di cuento o música.",
+      "category": "MUSIC_AND_AUDIO",
+      "distributionMode": "PUBLIC"
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "arn:aws:lambda:us-east-1:089534984729:function:LunyTalesSK"
+        },
+        "interfaces": [
+          {
+            "type": "AUDIO_PLAYER"
+          },
+          {
+            "type": "ALEXA_DATA_STORE"
+          },
+          {
+            "type": "ALEXA_DATASTORE_PACKAGEMANAGER",
+            "packages": [
+              {
+                "id": "MusicWidget"
+              },
+              {
+                "id": "StoryWidget"
+              }
+            ]
+          },
+          {
+            "type": "ALEXA_EXTENSION",
+            "requestedExtensions": [
+              {
+                "uri": "alexaext:datastore:10"
+              }
+            ],
+            "autoInitializedExtensions": []
+          }
+        ],
+        "regions": {
+          "NA": {
+            "endpoint": {
+              "uri": "arn:aws:lambda:us-east-1:089534984729:function:LunyTalesSK"
+            }
+          }
+        }
+      }
+    },
+    "permissions": [],
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": false,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false,
+      "isAvailableWorldwide": true,
+      "distributionCountries": []
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "widgetData": {
+    "title": "Musica",
+    "subtitle": "Toca para iniciar",
+    "duration": "20 minutos",
+    "imageM": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-m.jpg?v=20260316",
+    "imageL": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-l.jpg?v=20260316"
+  }
+}
