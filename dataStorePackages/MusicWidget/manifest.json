@@ -37,12 +37,80 @@
             ]
           }
         }
+      ],
+      "es-US": [
+        {
+          "targetViewport": "WIDGET_M",
+          "metadata": {
+            "name": "Musica",
+            "description": "Inicia musica relajante por 20 minutos.",
+            "keywords": [
+              "musica",
+              "dormir",
+              "relajar"
+            ],
+            "iconUri": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-m.jpg",
+            "previews": [
+              "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-m.jpg"
+            ]
+          }
+        },
+        {
+          "targetViewport": "WIDGET_XL",
+          "metadata": {
+            "name": "Musica",
+            "description": "Inicia musica relajante por 20 minutos.",
+            "keywords": [
+              "musica",
+              "dormir",
+              "relajar"
+            ],
+            "iconUri": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-l.jpg",
+            "previews": [
+              "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-l.jpg"
+            ]
+          }
+        }
+      ],
+      "es-ES": [
+        {
+          "targetViewport": "WIDGET_M",
+          "metadata": {
+            "name": "Musica",
+            "description": "Inicia musica relajante por 20 minutos.",
+            "keywords": [
+              "musica",
+              "dormir",
+              "relajar"
+            ],
+            "iconUri": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-m.jpg",
+            "previews": [
+              "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-m.jpg"
+            ]
+          }
+        },
+        {
+          "targetViewport": "WIDGET_XL",
+          "metadata": {
+            "name": "Musica",
+            "description": "Inicia musica relajante por 20 minutos.",
+            "keywords": [
+              "musica",
+              "dormir",
+              "relajar"
+            ],
+            "iconUri": "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-l.jpg",
+            "previews": [
+              "https://luma-tales-audio.s3.us-east-2.amazonaws.com/widgets/widget-music-l.jpg"
+            ]
+          }
+        }
       ]
     }
   },
   "manifest": {
     "id": "MusicWidget",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "installStateChanges": "AUTOMATIC",
     "updateStateChanges": "AUTOMATIC",
     "presentationDefinitions": [

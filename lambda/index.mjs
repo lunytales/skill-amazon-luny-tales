@@ -1,6 +1,11 @@
+import { createFlowId, createPlaybackId, emitAnalytics } from "./analytics.mjs";
+
 export const handler = async (event) => {
-  console.log(JSON.stringify(event));
-  const request = event.request;
+  const rawEventLoggingEnabled = (process.env.RAW_EVENT_LOG_ENABLED ?? "false").toLowerCase() === "true";
+  if (rawEventLoggingEnabled) {
+    console.log(JSON.stringify(event));
+  }
+  const request = event?.request ?? {};
 
   const BASE = "https://luma-tales-audio.s3.us-east-2.amazonaws.com";
   const TARGET_MS = 20 * 60 * 1000;
@@ -24,12 +29,28 @@ export const handler = async (event) => {
   ];
 
   const MUSIC_BY_ID = new Map(MUSIC_TRACKS.map((t) => [t.id, t]));
+  const STORY_BY_ID = new Map(STORIES.map((s) => [s.id, s]));
 
   const normalize = (s) =>
     (s || "")
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
+
+  const getSlotTipoValue = (intent) => {
+    const slot = intent?.slots?.tipo;
+    if (!slot) return "";
+
+    if (typeof slot.value === "string" && slot.value.trim()) {
+      return slot.value;
+    }
+
+    const resolution = slot.resolutions?.resolutionsPerAuthority?.find(
+      (entry) => entry?.status?.code === "ER_SUCCESS_MATCH" && entry?.values?.[0]?.value?.name
+    );
+
+    return resolution?.values?.[0]?.value?.name ?? "";
+  };
 
   const speak = (text, end = false, repromptText = "¿Sigues ahí? Elige: cuento o música.") => ({
     version: "1.0",
@@ -110,6 +131,7 @@ export const handler = async (event) => {
   const encodeToken = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url");
   const decodeToken = (token) => {
     try {
+      if (!token) return null;
       return JSON.parse(Buffer.from(token, "base64url").toString("utf8"));
     } catch {
       return null;
@@ -125,49 +147,109 @@ export const handler = async (event) => {
     return item;
   };
 
-  const startMusic = ({ silent = false } = {}) => {
+  const getMusicDurationMs = (trackId) => MUSIC_BY_ID.get(trackId)?.ms ?? DEFAULT_TRACK_MS;
+  const getContextTokenData = () => decodeToken(event?.context?.AudioPlayer?.token);
+
+  const emit = (eventName, options = {}) => {
+    emitAnalytics(event, eventName, options);
+  };
+
+  const startMusic = ({ silent = false, source = "voice", triggerIntent = null } = {}) => {
     const first = randomItem(MUSIC_TRACKS);
-    const token = encodeToken({
+    const tokenData = {
       mode: "music",
-      remainingMs: TARGET_MS,
-      trackId: first.id
+      sequenceType: "music_only",
+      source,
+      flowId: createFlowId(),
+      playbackId: createPlaybackId(),
+      trackId: first.id,
+      trackIndex: 1,
+      remainingMs: TARGET_MS
+    };
+
+    emit("music_flow_started", {
+      tokenData,
+      status: "started",
+      metadata: { triggerIntent }
     });
+
+    emit("music_started", {
+      tokenData,
+      status: "directive_sent",
+      metadata: { triggerIntent }
+    });
+
+    const token = encodeToken(tokenData);
     return playAudio(first.url, token, silent ? null : "Perfecto. Empieza la música.");
   };
 
-  const startStory = ({ silent = false } = {}) => {
+  const startStory = ({ silent = false, source = "voice", triggerIntent = null } = {}) => {
     const story = randomItem(STORIES);
-    const token = encodeToken({
+    const tokenData = {
       mode: "story",
+      sequenceType: "story_plus_song",
+      source,
+      flowId: createFlowId(),
+      playbackId: createPlaybackId(),
       storyId: story.id,
-      step: "cuento"
+      step: "cuento",
+      trackIndex: 1
+    };
+
+    emit("story_flow_started", {
+      tokenData,
+      status: "started",
+      metadata: { triggerIntent }
     });
+
+    emit("story_started", {
+      tokenData,
+      status: "directive_sent",
+      metadata: { triggerIntent }
+    });
+
+    const token = encodeToken(tokenData);
     return playAudio(story.url, token, silent ? null : "Me encanta. Que empiece el cuento.");
   };
 
   const handleIntentByName = (intentName, opts = {}) => {
     const { fromWidget = false, slotTipo = "" } = opts;
+    const source = fromWidget ? "widget" : "voice";
 
     if (["AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.PauseIntent"].includes(intentName)) {
+      const controlType = intentName.replace("AMAZON.", "").replace("Intent", "").toLowerCase();
+      emit("playback_control_requested", {
+        tokenData: getContextTokenData(),
+        source,
+        controlType,
+        status: "requested",
+        stopReason: `user_${controlType}`
+      });
       return stopAudio();
     }
 
     if (intentName === "PlayMusicIntent") {
-      return startMusic({ silent: fromWidget });
+      emit("choice_selected", { source, choice: "music", status: "recognized" });
+      return startMusic({ silent: fromWidget, source, triggerIntent: intentName });
     }
 
     if (intentName === "PlayStoryIntent") {
-      return startStory({ silent: fromWidget });
+      emit("choice_selected", { source, choice: "story", status: "recognized" });
+      return startStory({ silent: fromWidget, source, triggerIntent: intentName });
     }
 
     if (intentName === "ElegirAudioIntent") {
       const tipo = normalize(slotTipo);
       if (tipo.includes("musi")) {
-        return startMusic({ silent: false });
+        emit("choice_selected", { source, choice: "music", status: "recognized" });
+        return startMusic({ silent: false, source, triggerIntent: intentName });
       }
       if (tipo.includes("cuento") || tipo.includes("relato") || tipo.includes("historia")) {
-        return startStory({ silent: false });
+        emit("choice_selected", { source, choice: "story", status: "recognized" });
+        return startStory({ silent: false, source, triggerIntent: intentName });
       }
+
+      emit("choice_selected", { source, choice: "unknown", status: "unrecognized" });
       return speak("Lo siento, no te entendí. ¿Prefieres cuento o música?", false);
     }
 
@@ -179,63 +261,259 @@ export const handler = async (event) => {
     if (!tokenData) return emptyResponse();
 
     if (tokenData.mode === "story" && tokenData.step === "cuento") {
-      const story = STORIES.find((s) => s.id === tokenData.storyId);
+      const story = STORY_BY_ID.get(tokenData.storyId);
       const song = story ? MUSIC_BY_ID.get(story.songId) : null;
       if (!song) return emptyResponse();
 
-      const nextToken = encodeToken({
-        mode: "story",
-        storyId: story.id,
-        step: "cancion"
+      const nextTokenData = {
+        ...tokenData,
+        playbackId: createPlaybackId(),
+        parentPlaybackId: tokenData.playbackId,
+        step: "cancion",
+        trackId: song.id,
+        trackIndex: 2
+      };
+      const nextToken = encodeToken(nextTokenData);
+
+      emit("story_song_enqueued", {
+        tokenData: nextTokenData,
+        status: "queued"
       });
+
       return enqueueAudio(song.url, nextToken, request.token);
     }
 
     if (tokenData.mode === "music") {
-      const current = MUSIC_BY_ID.get(tokenData.trackId);
-      const currentMs = current?.ms ?? DEFAULT_TRACK_MS;
+      const currentMs = getMusicDurationMs(tokenData.trackId);
       const remainingAfter = (tokenData.remainingMs ?? TARGET_MS) - currentMs;
 
       if (remainingAfter <= 0) {
+        emit("music_flow_nearly_completed", {
+          tokenData,
+          remainingMs: 0,
+          listenedMs: currentMs,
+          status: "completion_scheduled"
+        });
         return emptyResponse();
       }
 
       const next = randomItem(MUSIC_TRACKS, tokenData.trackId);
-      const nextToken = encodeToken({
-        mode: "music",
+      const nextTokenData = {
+        ...tokenData,
+        playbackId: createPlaybackId(),
+        parentPlaybackId: tokenData.playbackId,
+        trackId: next.id,
+        trackIndex: (tokenData.trackIndex ?? 1) + 1,
+        remainingMs: remainingAfter
+      };
+      const nextToken = encodeToken(nextTokenData);
+
+      emit("music_track_enqueued", {
+        tokenData: nextTokenData,
         remainingMs: remainingAfter,
-        trackId: next.id
+        status: "queued"
       });
+
       return enqueueAudio(next.url, nextToken, request.token);
     }
 
     return emptyResponse();
   }
 
-  if (
-    request.type === "AudioPlayer.PlaybackFinished" ||
-    request.type === "AudioPlayer.PlaybackStopped" ||
-    request.type === "AudioPlayer.PlaybackStarted"
-  ) {
+  if (request.type === "AudioPlayer.PlaybackStarted") {
+    const tokenData = decodeToken(request.token);
+    if (!tokenData) return emptyResponse();
+
+    emit("playback_started", {
+      tokenData,
+      status: "started"
+    });
+
+    if (tokenData.mode === "story" && tokenData.step === "cuento") {
+      emit("story_playback_started", { tokenData, status: "started" });
+    } else if (tokenData.mode === "story" && tokenData.step === "cancion") {
+      emit("story_song_playback_started", { tokenData, status: "started" });
+    } else if (tokenData.mode === "music") {
+      emit("music_track_playback_started", { tokenData, status: "started" });
+    }
+
+    return emptyResponse();
+  }
+
+  if (request.type === "AudioPlayer.PlaybackFinished") {
+    const tokenData = decodeToken(request.token);
+    if (!tokenData) return emptyResponse();
+
+    emit("playback_finished", {
+      tokenData,
+      status: "completed"
+    });
+
+    if (tokenData.mode === "story" && tokenData.step === "cuento") {
+      emit("story_completed", {
+        tokenData,
+        status: "completed"
+      });
+    } else if (tokenData.mode === "story" && tokenData.step === "cancion") {
+      emit("story_song_completed", {
+        tokenData,
+        status: "completed"
+      });
+      emit("story_flow_completed", {
+        tokenData,
+        status: "completed"
+      });
+    } else if (tokenData.mode === "music") {
+      const currentMs = getMusicDurationMs(tokenData.trackId);
+      const remainingAfter = (tokenData.remainingMs ?? TARGET_MS) - currentMs;
+
+      emit("music_track_completed", {
+        tokenData,
+        listenedMs: currentMs,
+        remainingMs: Math.max(remainingAfter, 0),
+        status: "completed"
+      });
+
+      if (remainingAfter <= 0) {
+        emit("music_flow_completed", {
+          tokenData,
+          listenedMs: currentMs,
+          remainingMs: 0,
+          status: "completed"
+        });
+      }
+    }
+
+    return emptyResponse();
+  }
+
+  if (request.type === "AudioPlayer.PlaybackStopped") {
+    const tokenData = decodeToken(request.token);
+    if (!tokenData) return emptyResponse();
+
+    emit("playback_stopped", {
+      tokenData,
+      listenedMs: request.offsetInMilliseconds,
+      status: "stopped",
+      stopReason: "unknown"
+    });
+
+    if (tokenData.mode === "story" && tokenData.step === "cuento") {
+      emit("story_abandon_candidate", {
+        tokenData,
+        listenedMs: request.offsetInMilliseconds,
+        status: "abandon_candidate",
+        stopReason: "unknown"
+      });
+    } else if (tokenData.mode === "story" && tokenData.step === "cancion") {
+      emit("story_song_abandon_candidate", {
+        tokenData,
+        listenedMs: request.offsetInMilliseconds,
+        status: "abandon_candidate",
+        stopReason: "unknown"
+      });
+      emit("story_flow_abandon_candidate", {
+        tokenData,
+        listenedMs: request.offsetInMilliseconds,
+        status: "abandon_candidate",
+        stopReason: "unknown"
+      });
+    } else if (tokenData.mode === "music") {
+      emit("music_track_abandon_candidate", {
+        tokenData,
+        listenedMs: request.offsetInMilliseconds,
+        status: "abandon_candidate",
+        stopReason: "unknown"
+      });
+      emit("music_flow_abandon_candidate", {
+        tokenData,
+        listenedMs: request.offsetInMilliseconds,
+        status: "abandon_candidate",
+        stopReason: "unknown"
+      });
+    }
+
+    return emptyResponse();
+  }
+
+  if (request.type === "AudioPlayer.PlaybackFailed") {
+    const tokenData = decodeToken(request.token);
+    emit("playback_failed", {
+      tokenData,
+      status: "failed",
+      stopReason: "playback_failed",
+      metadata: {
+        errorType: request.error?.type ?? null,
+        errorMessage: request.error?.message ?? null
+      }
+    });
+
+    if (tokenData?.mode === "story") {
+      emit("story_flow_abandon_candidate", {
+        tokenData,
+        status: "abandon_candidate",
+        stopReason: "playback_failed"
+      });
+    } else if (tokenData?.mode === "music") {
+      emit("music_flow_abandon_candidate", {
+        tokenData,
+        status: "abandon_candidate",
+        stopReason: "playback_failed"
+      });
+    }
+
     return emptyResponse();
   }
 
   if (request.type === "Alexa.Presentation.APL.UserEvent") {
     const action = request.arguments?.[0];
     if (action?.action === "launchIntent" && typeof action.intentName === "string") {
+      emit("widget_intent_launch", {
+        source: "widget",
+        status: "requested",
+        metadata: { intentName: action.intentName }
+      });
       return handleIntentByName(action.intentName, { fromWidget: true });
     }
     return emptyResponse();
   }
 
   if (request.type === "LaunchRequest") {
+    emit("skill_opened", {
+      source: "voice",
+      status: "opened"
+    });
     return speak("¡Hola! Soy Luny. ¿Qué te apetece hoy: cuento o música?", false);
   }
 
   if (request.type === "IntentRequest") {
-    const intent = request.intent.name;
-    const slotTipo = request.intent.slots?.tipo?.value || "";
+    const intent = request.intent?.name;
+    const slotTipo = getSlotTipoValue(request.intent);
+
+    emit("intent_received", {
+      source: "voice",
+      status: "received",
+      metadata: {
+        intentName: intent ?? null,
+        slotTipo: slotTipo || null
+      }
+    });
+
     return handleIntentByName(intent, { fromWidget: false, slotTipo });
+  }
+
+  if (request.type === "SessionEndedRequest") {
+    emit("session_ended", {
+      source: "voice",
+      status: "ended",
+      stopReason: request.reason ?? "unknown",
+      metadata: {
+        reason: request.reason ?? null,
+        errorType: request.error?.type ?? null,
+        errorMessage: request.error?.message ?? null
+      }
+    });
+    return emptyResponse();
   }
 
   return speak("Lo siento, no te entendí. ¿Prefieres cuento o música?", false);
